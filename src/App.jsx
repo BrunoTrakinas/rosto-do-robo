@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-// IMPORTAÇÃO DA SUA LOGO
 import bepitLogo from './bepit-logo.png'; 
 
 function App() {
@@ -43,15 +42,14 @@ function App() {
   }
 
   return (
-    // MUDANÇA 1: Adicionamos 'overflow-hidden' para garantir que nada "vaze" para fora da moldura principal.
-    <div className="bg-gray-100 h-screen flex flex-col max-w-lg mx-auto overflow-hidden">
+    // AQUI ESTÁ A CORREÇÃO
+    <div className="bg-gray-100 h-[90vh] flex flex-col max-w-lg mx-auto overflow-hidden">
       
       <div className="bg-blue-500 p-3 text-white flex items-center justify-center shadow-md">
         <img src={bepitLogo} alt="Logo BEPIT" className="h-8 w-8 mr-2" /> 
         <h1 className="text-xl font-semibold">BEPIT Chat</h1>
       </div>
 
-      {/* MUDANÇA 2: A MÁGICA ACONTECE AQUI. 'overflow-y-auto' cria a barra de rolagem INTERNA. */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col space-y-2">
           
@@ -71,7 +69,6 @@ function App() {
         </div>
       </div>
 
-      {/* Input */}
       <div className="bg-white p-4 flex items-center shadow-inner">
         <input
           type="text"
