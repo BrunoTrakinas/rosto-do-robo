@@ -11,7 +11,7 @@ function Application() {
     setUserInterfaceMessages([
       {
         sender: "bot",
-        text: 'Olá! Bem-vindo(a). Para começar, me diga se você é "local" ou "turista". 🤖'
+        text: '👋 Olá, seja muito bem-vindo(a)! Eu sou o BEPIT Nexus, seu guia sincero da Região dos Lagos. ✨Me diga, como posso te ajudar hoje?'
       }
     ]);
   }, []);
