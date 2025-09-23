@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from "react";
-import axios from 'axios';
+import apiClient from './lib/apiClient'; 
 import "./App.css";
-import bepitLogo from './bepit-logo.png'; 
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Mensagem inicial com a cópia que definimos e os botões
   const initialBotMessage = {
     sender: 'bot',
-    // <<< ALTERAÇÃO APLICADA AQUI NO TEXTO
-    text: 'Olá! Sou o BEPIT, seu guia na Região dos Lagos! Para te dar as melhores dicas, qual seu perfil por aqui? 🤖', 
+    text: 'Olá! Sou o BEPIT, seu guia na Região dos Lagos! Para te dar as melhores dicas, qual seu perfil por aqui? 🤖',
     quick_replies: ['Sou Turista', 'Sou Morador']
   };
 
@@ -19,41 +18,47 @@ function App() {
     setMessages([initialBotMessage]);
   }, []);
 
-  const handleQuickReplyClick = async (text) => {
+  // Função principal que lida com o envio de QUALQUER mensagem para a IA
+  const sendMessageToApi = async (text) => {
     if (isLoading) return;
 
     const userMessage = { text, sender: 'user' };
     
+    // Remove os botões antigos e adiciona a mensagem do usuário e a mensagem de "pensando"
     const updatedMessages = messages.filter(m => !m.quick_replies);
-    setMessages([...updatedMessages, userMessage]);
+    const loadingMessage = { sender: 'bot', text: 'Só um segundo, estou consultando meus arquivos... 🧠' };
+    setMessages([...updatedMessages, userMessage, loadingMessage]);
     setIsLoading(true);
 
     try {
-      const response = await axios.post('https://bepit-backend-oficial.onrender.com/api/chat', { message: text });
+      const response = await apiClient.post('/api/chat', { message: text });
       const botMessage = { text: response.data.reply, sender: 'bot' };
-      setMessages(prev => [...prev, botMessage]);
+      setMessages(prev => [...prev.slice(0, -1), botMessage]);
     } catch (error) {
       console.error("Erro ao contatar o cérebro do robô:", error);
       const errorMessage = { text: "Opa, parece que minha conexão falhou. Tente de novo?", sender: 'bot' };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev.slice(0, -1), errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
   
-  const handleSendMessage = async () => {
-    if (inputValue.trim() === '' || isLoading) return;
-    const text = inputValue;
+  // Função chamada ao clicar nos botões de resposta rápida
+  const handleQuickReplyClick = (text) => {
+    sendMessageToApi(text);
+  };
+  
+  // Função chamada ao enviar texto pelo input
+  const handleSendMessage = () => {
+    if (inputValue.trim() === '') return;
+    sendMessageToApi(inputValue);
     setInputValue('');
-    const updatedMessages = messages.filter(m => !m.quick_replies);
-    setMessages([...updatedMessages]);
-    await handleQuickReplyClick(text);
   };
 
   return (
     <div className="bg-gray-100 h-screen flex flex-col max-w-lg mx-auto overflow-hidden">
       <div className="bg-blue-500 p-3 text-white flex items-center justify-center shadow-md">
-        <img src={bepitLogo} alt="Logo BEPIT" className="h-8 w-8 mr-2" /> 
+        <img src="/bepit-logo.png" alt="Logo BEPIT" className="h-8 w-8 mr-2" /> 
         <h1 className="text-xl font-semibold">BEPIT Nexus</h1>
       </div>
 
@@ -68,8 +73,9 @@ function App() {
                 </div>
               </div>
 
+              {/* Lógica para renderizar os botões de resposta rápida */}
               {message.quick_replies && !isLoading && (
-                <div className="flex justify-center space-x-2 mt-2">
+                <div className="flex flex-wrap justify-center gap-2 mt-2">
                   {message.quick_replies.map((reply, i) => (
                     <button 
                       key={i}
@@ -83,7 +89,6 @@ function App() {
               )}
             </div>
           ))}
-
         </div>
       </div>
 
