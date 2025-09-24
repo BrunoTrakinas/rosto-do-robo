@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from "react";
-import apiClient from './lib/apiClient'; 
+import apiClient from './lib/apiClient';
+import SuggestionButtons from './components/SuggestionButtons';
 import "./App.css";
 
-// --- COMPONENTE 1: A TELA DE CHAT ---
-// Esta é a nossa UI de chat, agora como um componente reutilizável.
+// --- COMPONENTE DA TELA DE CHAT ---
 function ChatScreen({ regiao, onVoltar }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // A mensagem de boas-vindas agora usa o nome da região selecionada.
   useEffect(() => {
     setMessages([{
       sender: 'bot',
@@ -17,18 +16,15 @@ function ChatScreen({ regiao, onVoltar }) {
     }]);
   }, [regiao]);
 
-  const handleSendMessage = async () => {
-    if (inputValue.trim() === '' || isLoading) return;
-    const text = inputValue;
+  const sendMessageToApi = async (text) => {
+    if (isLoading) return;
     const userMessage = { text, sender: 'user' };
-    
+
     const loadingMessage = { sender: 'bot', text: 'Só um segundo, estou consultando meus arquivos... 🧠' };
     setMessages(prev => [...prev, userMessage, loadingMessage]);
-    setInputValue('');
     setIsLoading(true);
 
     try {
-      // A chamada da API agora inclui o 'slug' da região dinamicamente na URL.
       const response = await apiClient.post(`/api/chat/${regiao.slug}`, { message: text });
       const botMessage = { text: response.data.reply, sender: 'bot' };
       setMessages(prev => [...prev.slice(0, -1), botMessage]);
@@ -41,13 +37,24 @@ function ChatScreen({ regiao, onVoltar }) {
     }
   };
 
+  const handleSendMessage = () => {
+    if (inputValue.trim() === '') return;
+    sendMessageToApi(inputValue);
+    setInputValue('');
+  };
+
+  const handleSuggestionClick = (suggestionText) => {
+    sendMessageToApi(`Quais as melhores opções de ${suggestionText}?`);
+  };
+
   return (
     <div className="bg-gray-100 h-screen flex flex-col max-w-lg mx-auto overflow-hidden">
       <div className="bg-blue-500 p-3 text-white flex items-center justify-between shadow-md">
         <button onClick={onVoltar} className="font-semibold hover:bg-blue-600 p-2 rounded-md">{"< Voltar"}</button>
         <h1 className="text-xl font-semibold">BEPIT Nexus</h1>
-        <div className="w-16"></div> {/* Espaçador para centralizar o título */}
+        <div className="w-16"></div>
       </div>
+
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col space-y-2">
           {messages.map((message, index) => (
@@ -59,7 +66,10 @@ function ChatScreen({ regiao, onVoltar }) {
           ))}
         </div>
       </div>
-      <div className="bg-white p-4 flex items-center shadow-inner">
+
+      <SuggestionButtons onSuggestionClick={handleSuggestionClick} isLoading={isLoading} />
+
+      <div className="bg-white p-4 flex items-center shadow-inner border-t border-gray-200">
         <input
           type="text"
           placeholder={isLoading ? "Aguarde..." : "Digite sua pergunta..."}
@@ -77,13 +87,11 @@ function ChatScreen({ regiao, onVoltar }) {
   );
 }
 
-// --- COMPONENTE 2: A NOVA TELA DE SELEÇÃO DE REGIÃO ---
+// --- COMPONENTE DA TELA DE SELEÇÃO DE REGIÃO ---
 function RegionSelectionScreen({ onSelectRegion }) {
-  // A lista de regiões disponíveis para o nosso império.
   const regioesDisponiveis = [
     { nome: 'Região dos Lagos', slug: 'lagos' },
-    // { nome: 'Gramado e Canela', slug: 'gramado' }, // Descomente para adicionar novas regiões
-    // { nome: 'Balneário Camboriú', slug: 'bc' },
+    // { nome: 'Gramado e Canela', slug: 'gramado' }, 
   ];
 
   return (
@@ -106,16 +114,13 @@ function RegionSelectionScreen({ onSelectRegion }) {
   );
 }
 
-// --- COMPONENTE 3: O "ROTEADOR" PRINCIPAL ---
-// Este é o nosso componente principal agora. Ele decide qual tela mostrar.
+// --- COMPONENTE PRINCIPAL QUE GERENCIA AS TELAS ---
 function App() {
   const [regiaoSelecionada, setRegiaoSelecionada] = useState(null);
 
   if (regiaoSelecionada) {
-    // Se uma região já foi escolhida, mostra a tela de chat para aquela região.
     return <ChatScreen regiao={regiaoSelecionada} onVoltar={() => setRegiaoSelecionada(null)} />;
   } else {
-    // Se não, mostra a tela de seleção de destino.
     return <RegionSelectionScreen onSelectRegion={setRegiaoSelecionada} />;
   }
 }
