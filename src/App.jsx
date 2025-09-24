@@ -26,7 +26,12 @@ function ChatScreen({ regiao, onVoltar }) {
 
     try {
       const response = await apiClient.post(`/api/chat/${regiao.slug}`, { message: text });
-      const botMessage = { text: response.data.reply, sender: 'bot' };
+      // Capturamos o ID da interação que o backend nos envia
+      const botMessage = { 
+        text: response.data.reply, 
+        sender: 'bot',
+        interactionId: response.data.interactionId 
+      };
       setMessages(prev => [...prev.slice(0, -1), botMessage]);
     } catch (error) {
       console.error("Erro ao contatar o cérebro do robô:", error);
@@ -34,6 +39,21 @@ function ChatScreen({ regiao, onVoltar }) {
       setMessages(prev => [...prev.slice(0, -1), errorMessage]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // <<< NOVA FUNÇÃO PARA ENVIAR O FEEDBACK >>>
+  const handleFeedbackClick = async (interactionId, feedback) => {
+    try {
+      // 1. Envia o feedback para a nova rota no backend
+      await apiClient.post('/api/feedback', { interactionId, feedback });
+      // 2. Atualiza a mensagem na tela para esconder os botões de feedback
+      setMessages(prevMessages => prevMessages.map(msg => 
+        msg.interactionId === interactionId ? { ...msg, feedback_sent: true } : msg
+      ));
+    } catch (error) {
+      console.error("Erro ao enviar feedback:", error);
+      // Aqui podemos mostrar uma pequena mensagem de erro se quisermos no futuro
     }
   };
 
@@ -58,10 +78,22 @@ function ChatScreen({ regiao, onVoltar }) {
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col space-y-2">
           {messages.map((message, index) => (
-            <div key={index} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`${message.sender === 'user' ? 'bg-blue-200' : 'bg-gray-300'} text-black p-2 rounded-lg max-w-xs shadow`}>
-                {message.text}
+            <div key={index}>
+              {/* O balão de chat */}
+              <div className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`${message.sender === 'user' ? 'bg-blue-200' : 'bg-gray-300'} text-black p-2 rounded-lg max-w-xs shadow`}>
+                  {message.text}
+                </div>
               </div>
+              
+              {/* <<< NOVA LÓGICA PARA MOSTRAR OS BOTÕES DE FEEDBACK >>> */}
+              {/* Mostra os botões APENAS se a mensagem for do bot, tiver um ID e o feedback ainda não tiver sido enviado */}
+              {message.sender === 'bot' && message.interactionId && !message.feedback_sent && (
+                <div className="flex justify-start mt-2 space-x-2 pl-2">
+                    <button onClick={() => handleFeedbackClick(message.interactionId, 'gostei')} className="p-1 rounded-full hover:bg-gray-200 transition-transform transform hover:scale-125" title="Gostei da resposta">👍</button>
+                    <button onClick={() => handleFeedbackClick(message.interactionId, 'nao_gostei')} className="p-1 rounded-full hover:bg-gray-200 transition-transform transform hover:scale-125" title="Não gostei da resposta">👎</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
