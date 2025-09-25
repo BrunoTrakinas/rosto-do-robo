@@ -1,11 +1,14 @@
-// src/main.jsx
-import React from "react";
-import ReactDOM from "react-dom/client";
-import Application from "./App.jsx";
-import "./index.css"; // Tailwind v4 entra aqui
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import EscolhaRegiao from "./pages/EscolhaRegiao";
+import Chat from "./pages/Chat"; // sua página de chat existente
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <Application />
-  </React.StrictMode>
-);
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<EscolhaRegiao />} />
+        <Route path="/chat/:regiaoSlug" element={<Chat />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
