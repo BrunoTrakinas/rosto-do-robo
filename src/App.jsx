@@ -122,7 +122,7 @@ function ChatScreen({ regiao, onVoltar }) {
 // --- COMPONENTE DA TELA DE SELEÇÃO DE REGIÃO ---
 function RegionSelectionScreen({ onSelectRegion }) {
   const regioesDisponiveis = [
-    { nome: 'Região dos Lagos', slug: 'lagos' },
+    { nome: 'Região dos Lagos', slug: 'regiao-dos-lagos' },
     // { nome: 'Gramado e Canela', slug: 'gramado' }, 
   ];
 

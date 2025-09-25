@@ -1,13 +1,14 @@
+// src/lib/apiClient.js
 import axios from "axios";
 
-// Este cliente lê a URL do seu arquivo .env, garantindo que o endereço está sempre correto.
+// Em desenvolvimento, use http://localhost:3002
+// Em produção, defina VITE_API_URL no .env do front (ex.: https://seu-backend.com)
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // Ex: https://bepit-backend-oficial.onrender.com
-  timeout: 30000, // Aumentamos o tempo de espera para 30 segundos para lidar com o "cold start" do Render
-  headers: {
-    "Content-Type": "application/json"
-  }
+  baseURL: API_BASE,
+  headers: { "Content-Type": "application/json" },
+  timeout: 20000,
 });
 
 export default apiClient;
-
