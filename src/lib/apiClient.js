@@ -1,18 +1,13 @@
-// F:\uber-chat-mvp\rosto-do-robo\src\lib\apiClient.js
+// src/lib/apiClient.js
 import axios from "axios";
 
-/**
- * PRODUÇÃO: Render
- * DEV: localhost (se quiser testar local)
- */
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://backend-oficial-5fye.onrender.com"; // <- seu domínio no Render
+// Usa variável do Netlify/Vite (definida no painel de env)
+const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3002";
 
 const apiClient = axios.create({
-  baseURL: BASE_URL,
-  withCredentials: true,
-  timeout: 20000
+  baseURL,
+  withCredentials: true, // permite cookies se backend precisar
 });
 
 export default apiClient;
+

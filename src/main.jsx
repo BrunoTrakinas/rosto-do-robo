@@ -11,6 +11,7 @@ import "./index.css"; // ou App.css, conforme seu projeto
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
+     <App />
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />

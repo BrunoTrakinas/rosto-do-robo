@@ -287,8 +287,22 @@ function RegionSelectionScreen({ onSelectRegion, theme, setTheme }) {
 function App() {
   const [regiaoSelecionada, setRegiaoSelecionada] = useState(null);
   const { theme, setTheme } = useTheme();
+  useEffect(() => {
+    async function carregarParceiros() {
+      try {
+        const resp = await apiClient.get("/api/parceiros");
+        console.log("Parceiros recebidos:", resp.data.parceiros);
+      } catch (e) {
+        console.error("Erro ao buscar parceiros:", e);
+      }
+    }
+    carregarParceiros();
+  }, []);
 
-  // Roteamento simples por URL (sem dependências)
+  return <h1>BEPIT Nexus</h1>;
+
+
+ // Roteamento simples por URL (sem dependências)
   const path = window.location.pathname;
 
   // Admin: login
