@@ -1,14 +1,18 @@
-// src/lib/apiClient.js
+// F:\uber-chat-mvp\rosto-do-robo\src\lib\apiClient.js
 import axios from "axios";
 
-// Em desenvolvimento, use http://localhost:3002
-// Em produção, defina VITE_API_URL no .env do front (ex.: https://seu-backend.com)
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
+/**
+ * PRODUÇÃO: Render
+ * DEV: localhost (se quiser testar local)
+ */
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://backend-oficial-5fye.onrender.com"; // <- seu domínio no Render
 
 const apiClient = axios.create({
-  baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
-  timeout: 20000,
+  baseURL: BASE_URL,
+  withCredentials: true,
+  timeout: 20000
 });
 
 export default apiClient;
