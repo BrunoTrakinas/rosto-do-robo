@@ -43,7 +43,12 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
+
+  // >>> NOVO: conversationId persistido (para manter contexto)
+  const [conversationId, setConversationId] = useState(() => {
+    const saved = localStorage.getItem("conversationId");
+    return saved && typeof saved === "string" ? saved : null;
+  });
 
   const messagesEndRef = useRef(null);
 
@@ -71,36 +76,42 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
 
     try {
       const payload = { message: text };
+
+      // >>> NOVO: envia conversationId se já existir
       if (conversationId) payload.conversationId = conversationId;
 
       const response = await apiClient.post(`/api/chat/${regiao.slug}`, payload);
 
-      const newConvId = response.data.conversationId || conversationId || null;
-      if (newConvId && newConvId !== conversationId) setConversationId(newConvId);
+      // >>> NOVO: atualiza e persiste conversationId retornado
+      const newConvId = response?.data?.conversationId || conversationId || null;
+      if (newConvId && newConvId !== conversationId) {
+        setConversationId(newConvId);
+        localStorage.setItem("conversationId", newConvId);
+      }
 
       const botMessage = {
-        text: response.data.reply,
+        text: response?.data?.reply || "Não consegui entender. Pode tentar reformular?",
         sender: "bot",
-        interactionId: response.data.interactionId || null,
-        photoLinks: Array.isArray(response.data.photoLinks) ? response.data.photoLinks : []
+        interactionId: response?.data?.interactionId || null,
+        photoLinks: Array.isArray(response?.data?.photoLinks) ? response.data.photoLinks : []
       };
 
       setMessages((prev) => [...prev.slice(0, -1), botMessage]);
     } catch (error) {
-  // Log detalhado:
-  console.error("Erro ao contatar o cérebro do robô:", {
-    message: error?.message,
-    code: error?.code,
-    name: error?.name,
-    url: error?.config?.url,
-    method: error?.config?.method,
-    status: error?.response?.status,
-    statusText: error?.response?.statusText,
-    data: error?.response?.data
-  });
-  const errorMessage = { sender: "bot", text: "Opa, minha conexão falhou. Tente de novo?" };
-  setMessages((prev) => [...prev.slice(0, -1), errorMessage]);
-} finally {
+      // Log detalhado:
+      console.error("Erro ao contatar o cérebro do robô:", {
+        message: error?.message,
+        code: error?.code,
+        name: error?.name,
+        url: error?.config?.url,
+        method: error?.config?.method,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        data: error?.response?.data
+      });
+      const errorMessage = { sender: "bot", text: "Opa, minha conexão falhou. Tente de novo?" };
+      setMessages((prev) => [...prev.slice(0, -1), errorMessage]);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -117,8 +128,9 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
   };
 
   const handleSendMessage = () => {
-    if (inputValue.trim() === "") return;
-    sendMessageToApi(inputValue);
+    const value = (inputValue || "").trim();
+    if (value === "") return;
+    sendMessageToApi(value);
     setInputValue("");
   };
 
