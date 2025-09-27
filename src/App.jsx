@@ -180,7 +180,7 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
                   <div className="flex justify-start mt-2 space-x-2 pl-2">
                     <button
                       onClick={() => handleFeedbackClick(message.interactionId, "gostei")}
-                      className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-transform transform hover:scale-125"
+                      className="p-1 rounded-full hover:bg-gray-2 00 dark:hover:bg-gray-800 transition-transform transform hover:scale-125"
                       title="Gostei da resposta"
                     >
                       👍
@@ -287,22 +287,8 @@ function RegionSelectionScreen({ onSelectRegion, theme, setTheme }) {
 function App() {
   const [regiaoSelecionada, setRegiaoSelecionada] = useState(null);
   const { theme, setTheme } = useTheme();
-  useEffect(() => {
-    async function carregarParceiros() {
-      try {
-        const resp = await apiClient.get("/api/parceiros");
-        console.log("Parceiros recebidos:", resp.data.parceiros);
-      } catch (e) {
-        console.error("Erro ao buscar parceiros:", e);
-      }
-    }
-    carregarParceiros();
-  }, []);
 
-  return <h1>BEPIT Nexus</h1>;
-
-
- // Roteamento simples por URL (sem dependências)
+  // Roteamento simples por URL (sem dependências)
   const path = window.location.pathname;
 
   // Admin: login

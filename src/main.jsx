@@ -1,24 +1,31 @@
-// src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
 import App from "./App.jsx";
-import AdminLogin from "./admin/AdminLogin.jsx";
-import AdminDashboard from "./admin/AdminDashboard.jsx";
+import "./index.css";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
-import "./index.css"; // ou App.css, conforme seu projeto
+const rootElement = document.getElementById("root");
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-     <App />
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  </React.StrictMode>
-);
+if (!rootElement) {
+  // Fallback de segurança caso o #root não exista no index.html
+  const msg =
+    "Elemento #root não encontrado no index.html. Verifique se existe <div id=\"root\"></div>.";
+  console.error(msg);
+  const body = document.body || document.getElementsByTagName("body")[0];
+  const warn = document.createElement("pre");
+  warn.textContent = msg;
+  warn.style.padding = "16px";
+  warn.style.background = "#fee2e2";
+  warn.style.color = "#7f1d1d";
+  warn.style.border = "1px solid #fecaca";
+  warn.style.borderRadius = "8px";
+  body.appendChild(warn);
+} else {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
+}
