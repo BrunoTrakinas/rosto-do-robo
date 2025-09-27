@@ -50,6 +50,7 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
+  const [backendStatus, setBackendStatus] = useState({ ok: true, detail: "" });
 
   // Auto-scroll: ancora no final
   const messagesEndRef = useRef(null);
@@ -61,12 +62,35 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
         text: `Olá! Bem-vindo ao BEPIT Nexus ${regiao.nome}. O que você gostaria de saber hoje? 🤖`
       }
     ]);
+    setConversationId(null);
   }, [regiao]);
 
   // Sempre que as mensagens mudarem, rola para o final
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Healthcheck leve para diagnosticar “sem conexão”
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const resp = await apiClient.get("/health");
+        if (!isMounted) return;
+        setBackendStatus({ ok: Boolean(resp?.data?.ok), detail: "" });
+      } catch (e) {
+        if (!isMounted) return;
+        const human =
+          e?.response?.data?.error ||
+          e?.message ||
+          "Falha ao checar o servidor. Verifique a variável VITE_API_BASE_URL.";
+        setBackendStatus({ ok: false, detail: human });
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const sendMessageToApi = async (text) => {
     if (isLoading) return;
@@ -102,13 +126,21 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
 
       // Remove a mensagem de "carregando" e coloca a resposta
       setMessages((prev) => [...prev.slice(0, -1), botMessage]);
+      setBackendStatus({ ok: true, detail: "" });
     } catch (error) {
+      // Mostra razão humana no chat
+      const reason =
+        error?.response?.data?.error ||
+        error?.message ||
+        "Falha de rede. Confira o backend e o CORS.";
       console.error("Erro ao contatar o cérebro do robô:", error);
+
       const errorMessage = {
-        text: "Opa, minha conexão falhou. Tente de novo?",
+        text: `Opa, minha conexão falhou. ${reason}`,
         sender: "bot"
       };
       setMessages((prev) => [...prev.slice(0, -1), errorMessage]);
+      setBackendStatus({ ok: false, detail: reason });
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +175,12 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
       {/* Header */}
       <div className="bg-blue-500 dark:bg-blue-600 p-3 text-white flex items-center justify-between shadow-md">
         <button
-          onClick={onVoltar}
+          onClick={() => {
+            // Ao voltar, limpamos a conversa para evitar cargas antigas
+            setConversationId(null);
+            setMessages([]);
+            onVoltar();
+          }}
           className="font-semibold hover:bg-blue-600/40 p-2 rounded-md"
         >
           {"< Voltar"}
@@ -151,6 +188,13 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
         <h1 className="text-xl font-semibold">BEPIT Nexus</h1>
         <ThemeToggle theme={theme} setTheme={setTheme} />
       </div>
+
+      {/* Banner de conectividade */}
+      {!backendStatus.ok && (
+        <div className="bg-red-600 text-white text-sm px-3 py-2">
+          Sem conexão com o servidor. {backendStatus.detail}
+        </div>
+      )}
 
       {/* Lista de mensagens */}
       <div className="flex-1 overflow-y-auto p-4">
@@ -167,7 +211,7 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
                     message.sender === "user"
                       ? "bg-blue-200 dark:bg-blue-700"
                       : "bg-gray-300 dark:bg-gray-700"
-                  } text-black dark:text-gray-100 p-2 rounded-lg max-w-xs shadow`}
+                  } text-black dark:text-gray-100 p-2 rounded-lg max-w-xs shadow whitespace-pre-wrap`}
                 >
                   {message.text}
                 </div>
@@ -180,7 +224,7 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
                   <div className="flex justify-start mt-2 space-x-2 pl-2">
                     <button
                       onClick={() => handleFeedbackClick(message.interactionId, "gostei")}
-                      className="p-1 rounded-full hover:bg-gray-2 00 dark:hover:bg-gray-800 transition-transform transform hover:scale-125"
+                      className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-transform transform hover:scale-125"
                       title="Gostei da resposta"
                     >
                       👍
