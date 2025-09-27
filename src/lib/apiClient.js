@@ -1,18 +1,14 @@
 // src/lib/apiClient.js
 import axios from "axios";
 
-// Em produção, ISSO precisa estar definido no Netlify:
-// VITE_API_BASE_URL = https://seu-backend.onrender.com
+// Mostre no console qual backend está sendo usado
 const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3002";
-
-// Log de diagnóstico útil (só no dev console do navegador)
-if (typeof window !== "undefined") {
-  console.log("[apiClient] baseURL =", baseURL);
-}
+console.log("[apiClient] Base URL:", baseURL);
 
 const apiClient = axios.create({
   baseURL,
-  withCredentials: true
+  // Se você NÃO usa cookies/sessão entre domínios, deixe false:
+  withCredentials: false
 });
 
 export default apiClient;

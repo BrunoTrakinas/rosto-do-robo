@@ -87,10 +87,20 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
 
       setMessages((prev) => [...prev.slice(0, -1), botMessage]);
     } catch (error) {
-      console.error("Erro ao contatar o cérebro do robô:", error);
-      const errorMessage = { text: "Opa, minha conexão falhou. Tente de novo?", sender: "bot" };
-      setMessages((prev) => [...prev.slice(0, -1), errorMessage]);
-    } finally {
+  // Log detalhado:
+  console.error("Erro ao contatar o cérebro do robô:", {
+    message: error?.message,
+    code: error?.code,
+    name: error?.name,
+    url: error?.config?.url,
+    method: error?.config?.method,
+    status: error?.response?.status,
+    statusText: error?.response?.statusText,
+    data: error?.response?.data
+  });
+  const errorMessage = { sender: "bot", text: "Opa, minha conexão falhou. Tente de novo?" };
+  setMessages((prev) => [...prev.slice(0, -1), errorMessage]);
+} finally {
       setIsLoading(false);
     }
   };
