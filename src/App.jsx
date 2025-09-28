@@ -4,34 +4,35 @@ import AdminDashboard from "./admin/AdminDashboard";
 import React, { useState, useEffect, useRef } from "react";
 import apiClient from "./lib/apiClient";
 import SuggestionButtons from "./components/SuggestionButtons";
+import PreferenceChips from "./components/PreferenceChips";
 import "./App.css";
 
 /**
  * Hook de tema (claro/escuro) com Tailwind (darkMode: "class")
  */
 function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem("theme");
-    return saved === "dark" ? "dark" : "light";
+  const [temaAtual, definirTemaAtual] = useState(() => {
+    const salvo = localStorage.getItem("theme");
+    return salvo === "dark" ? "dark" : "light";
   });
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "dark") root.classList.add("dark");
-    else root.classList.remove("dark");
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-  return { theme, setTheme };
+    const raiz = document.documentElement;
+    if (temaAtual === "dark") raiz.classList.add("dark");
+    else raiz.classList.remove("dark");
+    localStorage.setItem("theme", temaAtual);
+  }, [temaAtual]);
+  return { temaAtual, definirTemaAtual };
 }
 
-function ThemeToggle({ theme, setTheme }) {
-  const toggle = () => setTheme(theme === "dark" ? "light" : "dark");
+function BotaoAlternarTema({ temaAtual, definirTemaAtual }) {
+  const alternar = () => definirTemaAtual(temaAtual === "dark" ? "light" : "dark");
   return (
     <button
-      onClick={toggle}
+      onClick={alternar}
       className="px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 border border-white/30"
-      title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+      title={temaAtual === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
     >
-      {theme === "dark" ? "☀️ Claro" : "🌙 Escuro"}
+      {temaAtual === "dark" ? "☀️ Claro" : "🌙 Escuro"}
     </button>
   );
 }
@@ -39,132 +40,154 @@ function ThemeToggle({ theme, setTheme }) {
 /**
  * Tela de Chat
  */
-function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
-  const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
+function TelaDeChat({ regiaoSelecionada, aoVoltar, temaAtual, definirTemaAtual }) {
+  const [listaDeMensagens, definirListaDeMensagens] = useState([]);
+  const [valorDoInput, definirValorDoInput] = useState("");
+  const [carregandoResposta, definirCarregandoResposta] = useState(false);
+  const [idDaConversa, definirIdDaConversa] = useState(null);
 
-  const messagesEndRef = useRef(null);
+  const referenciaFinalDasMensagens = useRef(null);
 
   useEffect(() => {
-    setMessages([
+    definirListaDeMensagens([
       {
-        sender: "bot",
-        // NOVA mensagem (discreta, sem mencionar parceiros)
-        text: "Olá! Eu sou seu concierge local. Posso orientar sobre **roteiros, transporte, passeios, praias e onde comer**. O que você quer saber primeiro?"
+        remetente: "bot",
+        texto: `Olá! Eu sou seu concierge local. Posso orientar sobre **roteiros, transporte, passeios, praias e onde comer**. O que você quer saber primeiro?`
       }
     ]);
-  }, [regiao]);
+  }, [regiaoSelecionada]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    referenciaFinalDasMensagens.current?.scrollIntoView({ behavior: "smooth" });
+  }, [listaDeMensagens]);
 
-  const sendMessageToApi = async (text) => {
-    if (isLoading) return;
+  async function enviarMensagemParaApi(texto) {
+    if (carregandoResposta) return;
 
-    const userMessage = { text, sender: "user" };
-    const loadingMessage = { sender: "bot", text: "Só um segundo, estou consultando meus arquivos... 🧠" };
+    const mensagemDoUsuario = { texto, remetente: "usuario" };
+    const mensagemDeCarregamento = { remetente: "bot", texto: "Pensando..." };
 
-    setMessages((prev) => [...prev, userMessage, loadingMessage]);
-    setIsLoading(true);
+    definirListaDeMensagens((anterior) => [...anterior, mensagemDoUsuario, mensagemDeCarregamento]);
+    definirCarregandoResposta(true);
 
     try {
-      const payload = { message: text };
-      if (conversationId) payload.conversationId = conversationId;
+      const corpo = { message: texto };
+      if (idDaConversa) corpo.conversationId = idDaConversa;
 
-      const response = await apiClient.post(`/api/chat/${regiao.slug}`, payload);
+      const respostaApi = await apiClient.enviarMensagemParaChat(regiaoSelecionada.slug, corpo);
 
-      const newConvId = response.data.conversationId || conversationId || null;
-      if (newConvId && newConvId !== conversationId) setConversationId(newConvId);
+      const novoIdDaConversa = respostaApi.data.conversationId || idDaConversa || null;
+      if (novoIdDaConversa && novoIdDaConversa !== idDaConversa) definirIdDaConversa(novoIdDaConversa);
 
-      const botMessage = {
-        text: response.data.reply,
-        sender: "bot",
-        interactionId: response.data.interactionId || null,
-        photoLinks: Array.isArray(response.data.photoLinks) ? response.data.photoLinks : []
+      const mensagemDoBot = {
+        texto: respostaApi.data.reply,
+        remetente: "bot",
+        interactionId: respostaApi.data.interactionId || null,
+        photoLinks: Array.isArray(respostaApi.data.photoLinks) ? respostaApi.data.photoLinks : []
       };
 
-      setMessages((prev) => [...prev.slice(0, -1), botMessage]);
-    } catch (error) {
-      // Log detalhado:
-      console.error("Erro ao contatar o cérebro do robô:", {
-        message: error?.message,
-        code: error?.code,
-        name: error?.name,
-        url: error?.config?.url,
-        method: error?.config?.method,
-        status: error?.response?.status,
-        statusText: error?.response?.statusText,
-        data: error?.response?.data
+      definirListaDeMensagens((anterior) => [...anterior.slice(0, -1), mensagemDoBot]);
+    } catch (erro) {
+      console.error("Erro ao contatar o servidor:", {
+        message: erro?.message,
+        code: erro?.code,
+        name: erro?.name,
+        url: erro?.config?.url,
+        method: erro?.config?.method,
+        status: erro?.response?.status,
+        statusText: erro?.response?.statusText,
+        data: erro?.response?.data
       });
-      const errorMessage = { sender: "bot", text: "Opa, minha conexão falhou. Tente de novo?" };
-      setMessages((prev) => [...prev.slice(0, -1), errorMessage]);
+      const mensagemDeErro = { remetente: "bot", texto: "Opa, minha conexão falhou. Pode tentar novamente?" };
+      definirListaDeMensagens((anterior) => [...anterior.slice(0, -1), mensagemDeErro]);
     } finally {
-      setIsLoading(false);
+      definirCarregandoResposta(false);
     }
-  };
+  }
 
-  const handleFeedbackClick = async (interactionId, feedback) => {
+  async function enviarFeedbackDeClique(idDaInteracao, feedback) {
     try {
-      await apiClient.post("/api/feedback", { interactionId, feedback });
-      setMessages((prev) =>
-        prev.map((msg) => (msg.interactionId === interactionId ? { ...msg, feedback_sent: true } : msg))
+      await apiClient.enviarFeedbackDaInteracao({ interactionId: idDaInteracao, feedback });
+      definirListaDeMensagens((anterior) =>
+        anterior.map((msg) => (msg.interactionId === idDaInteracao ? { ...msg, feedbackEnviado: true } : msg))
       );
-    } catch (error) {
-      console.error("Erro ao enviar feedback:", error);
+    } catch (erro) {
+      console.error("Erro ao enviar feedback:", erro);
     }
-  };
+  }
 
-  const handleSendMessage = () => {
-    if (inputValue.trim() === "") return;
-    sendMessageToApi(inputValue);
-    setInputValue("");
-  };
+  function acionarEnvioDaMensagem() {
+    if (valorDoInput.trim() === "") return;
+    enviarMensagemParaApi(valorDoInput);
+    definirValorDoInput("");
+  }
 
-  const handleSuggestionClick = (suggestionText) => {
-    sendMessageToApi(`Quais as melhores opções de ${suggestionText}?`);
-  };
+  function aoClicarSugestao(textoSugestao) {
+    enviarMensagemParaApi(`Quais são as melhores opções de ${textoSugestao}?`);
+  }
+
+  async function aoDefinirPreferencia(preferencia) {
+    if (!idDaConversa) {
+      definirListaDeMensagens((anterior) => [
+        ...anterior,
+        { remetente: "bot", texto: "Envie uma primeira mensagem para eu criar a conversa e salvar sua preferência, por favor." }
+      ]);
+      return;
+    }
+    try {
+      await apiClient.definirPreferenciaDaConversa({ conversationId: idDaConversa, preference: preferencia });
+      const textoConfirmacao =
+        preferencia === "locais"
+          ? "Beleza! Vou priorizar minhas indicações locais quando você pedir sugestões."
+          : "Combinado! Quando você pedir sugestões, trago opções genéricas da internet.";
+      definirListaDeMensagens((anterior) => [...anterior, { remetente: "bot", texto: textoConfirmacao }]);
+    } catch (erro) {
+      console.error("Erro ao salvar preferência:", erro);
+      definirListaDeMensagens((anterior) => [
+        ...anterior,
+        { remetente: "bot", texto: "Não consegui salvar sua preferência agora. Pode tentar novamente?" }
+      ]);
+    }
+  }
 
   return (
     <div className="h-screen flex flex-col max-w-lg mx-auto overflow-hidden bg-gray-100 dark:bg-gray-900">
-      {/* Header */}
+      {/* Cabeçalho */}
       <div className="bg-blue-500 dark:bg-blue-600 p-3 text-white flex items-center justify-between shadow-md">
-        <button onClick={onVoltar} className="font-semibold hover:bg-blue-600/40 p-2 rounded-md">
+        <button onClick={aoVoltar} className="font-semibold hover:bg-blue-600/40 p-2 rounded-md">
           {"< Voltar"}
         </button>
         <h1 className="text-xl font-semibold">BEPIT Nexus</h1>
-        <ThemeToggle theme={theme} setTheme={setTheme} />
+        <BotaoAlternarTema temaAtual={temaAtual} definirTemaAtual={definirTemaAtual} />
       </div>
 
       {/* Mensagens */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col space-y-3">
-          {messages.map((message, index) => (
-            <div key={index} className="space-y-2">
-              <div className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+          {listaDeMensagens.map((mensagem, indice) => (
+            <div key={indice} className="space-y-2">
+              <div className={`flex ${mensagem.remetente === "usuario" ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`${
-                    message.sender === "user"
+                    mensagem.remetente === "usuario"
                       ? "bg-blue-200 dark:bg-blue-700"
                       : "bg-gray-300 dark:bg-gray-700"
                   } text-black dark:text-gray-100 p-2 rounded-lg max-w-xs shadow whitespace-pre-wrap`}
                 >
-                  {message.text}
+                  {mensagem.texto}
                 </div>
               </div>
 
-              {/* Galeria de fotos vinda do backend */}
-              {message.sender === "bot" && Array.isArray(message.photoLinks) && message.photoLinks.length > 0 && (
+              {/* Galeria de fotos do backend */}
+              {mensagem.remetente === "bot" && Array.isArray(mensagem.photoLinks) && mensagem.photoLinks.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 pl-2">
-                  {message.photoLinks.slice(0, 6).map((url, i) => (
+                  {mensagem.photoLinks.slice(0, 6).map((url, i) => (
                     <a key={i} href={url} target="_blank" rel="noreferrer" className="block">
                       <img
                         src={url}
                         alt={`Foto ${i + 1}`}
                         className="w-full h-24 object-cover rounded-md border border-white/20"
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        onError={(evento) => { evento.currentTarget.style.display = "none"; }}
                       />
                     </a>
                   ))}
@@ -172,17 +195,17 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
               )}
 
               {/* Feedback */}
-              {message.sender === "bot" && message.interactionId && !message.feedback_sent && (
+              {mensagem.remetente === "bot" && mensagem.interactionId && !mensagem.feedbackEnviado && (
                 <div className="flex justify-start mt-1 space-x-2 pl-2">
                   <button
-                    onClick={() => handleFeedbackClick(message.interactionId, "gostei")}
+                    onClick={() => enviarFeedbackDeClique(mensagem.interactionId, "gostei")}
                     className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-transform transform hover:scale-125"
                     title="Gostei da resposta"
                   >
                     👍
                   </button>
                   <button
-                    onClick={() => handleFeedbackClick(message.interactionId, "nao_gostei")}
+                    onClick={() => enviarFeedbackDeClique(mensagem.interactionId, "nao_gostei")}
                     className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-transform transform hover:scale-125"
                     title="Não gostei da resposta"
                   >
@@ -192,28 +215,36 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
               )}
             </div>
           ))}
-          <div ref={messagesEndRef} />
+          <div ref={referenciaFinalDasMensagens} />
         </div>
       </div>
 
-      {/* Sugestões */}
-      <SuggestionButtons onSuggestionClick={handleSuggestionClick} isLoading={isLoading} />
+      {/* Chips de preferência (uma barra simples e direta) */}
+      <PreferenceChips
+        conversacaoId={idDaConversa}
+        onDefinirPreferencia={aoDefinirPreferencia}
+        desabilitado={carregandoResposta}
+      />
 
-      {/* Input */}
+      {/* Sugestões rápidas */}
+      <SuggestionButtons onSuggestionClick={aoClicarSugestao} isLoading={carregandoResposta} />
+
+      {/* Campo de entrada */}
       <div className="bg-white dark:bg-gray-800 p-4 flex items-center shadow-inner border-t border-gray-200 dark:border-gray-700">
         <input
           type="text"
-          placeholder={isLoading ? "Aguarde..." : "Digite sua pergunta... (ex.: roteiro 2 dias em Arraial)"}
+          placeholder={carregandoResposta ? "Aguarde..." : "Digite sua pergunta... (ex.: roteiro 2 dias em Arraial, restaurante em Cabo Frio)"}
           className="flex-1 border dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSendMessage(); }}
-          disabled={isLoading}
+          value={valorDoInput}
+          onChange={(evento) => definirValorDoInput(evento.target.value)}
+          onKeyDown={(evento) => { if (evento.key === "Enter") acionarEnvioDaMensagem(); }}
+          disabled={carregandoResposta}
         />
         <button
-          onClick={handleSendMessage}
-          disabled={isLoading}
+          onClick={acionarEnvioDaMensagem}
+          disabled={carregandoResposta}
           className="bg-blue-500 dark:bg-blue-600 text-white rounded-full p-2 ml-2 hover:bg-blue-600 dark:hover:bg-blue-700 disabled:bg-gray-400"
+          title="Enviar mensagem"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
             <path
@@ -233,10 +264,9 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
 /**
  * Tela de seleção de Região
  */
-function RegionSelectionScreen({ onSelectRegion, theme, setTheme }) {
-  const regioesDisponiveis = [
+function TelaDeSelecaoDeRegiao({ aoSelecionarRegiao, temaAtual, definirTemaAtual }) {
+  const listaDeRegioesDisponiveis = [
     { nome: "Região dos Lagos", slug: "regiao-dos-lagos" }
-    // Adicione mais regiões aqui quando quiser expandir
   ];
   return (
     <div className="h-screen flex flex-col items-center justify-center p-4 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -244,13 +274,13 @@ function RegionSelectionScreen({ onSelectRegion, theme, setTheme }) {
       <h1 className="text-3xl font-bold mb-2">Bem-vindo ao BEPIT Nexus</h1>
       <p className="mb-8 opacity-80">Qual destino você quer explorar hoje?</p>
       <div className="flex items-center gap-3 mb-6">
-        <ThemeToggle theme={theme} setTheme={setTheme} />
+        <BotaoAlternarTema temaAtual={temaAtual} definirTemaAtual={definirTemaAtual} />
       </div>
       <div className="w-full max-w-sm flex flex-col space-y-3">
-        {regioesDisponiveis.map((regiao) => (
+        {listaDeRegioesDisponiveis.map((regiao) => (
           <button
             key={regiao.slug}
-            onClick={() => onSelectRegion(regiao)}
+            onClick={() => aoSelecionarRegiao(regiao)}
             className="bg-blue-500 dark:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:scale-105 transition-transform"
           >
             {regiao.nome}
@@ -265,28 +295,28 @@ function RegionSelectionScreen({ onSelectRegion, theme, setTheme }) {
  * App Root
  */
 function App() {
-  const [regiaoSelecionada, setRegiaoSelecionada] = useState(null);
-  const { theme, setTheme } = useTheme();
+  const [regiaoSelecionada, definirRegiaoSelecionada] = useState(null);
+  const { temaAtual, definirTemaAtual } = useTheme();
 
-  const path = window.location.pathname;
-  if (path === "/admin" || path === "/admin/") return <AdminLogin theme={theme} setTheme={setTheme} />;
-  if (path.startsWith("/admin/dashboard")) return <AdminDashboard theme={theme} setTheme={setTheme} />;
+  const caminho = window.location.pathname;
+  if (caminho === "/admin" || caminho === "/admin/") return <AdminLogin theme={temaAtual} setTheme={definirTemaAtual} />;
+  if (caminho.startsWith("/admin/dashboard")) return <AdminDashboard theme={temaAtual} setTheme={definirTemaAtual} />;
 
   if (regiaoSelecionada) {
     return (
-      <ChatScreen
-        regiao={regiaoSelecionada}
-        onVoltar={() => setRegiaoSelecionada(null)}
-        theme={theme}
-        setTheme={setTheme}
+      <TelaDeChat
+        regiaoSelecionada={regiaoSelecionada}
+        aoVoltar={() => definirRegiaoSelecionada(null)}
+        temaAtual={temaAtual}
+        definirTemaAtual={definirTemaAtual}
       />
     );
   } else {
     return (
-      <RegionSelectionScreen
-        onSelectRegion={setRegiaoSelecionada}
-        theme={theme}
-        setTheme={setTheme}
+      <TelaDeSelecaoDeRegiao
+        aoSelecionarRegiao={definirRegiaoSelecionada}
+        temaAtual={temaAtual}
+        definirTemaAtual={definirTemaAtual}
       />
     );
   }
