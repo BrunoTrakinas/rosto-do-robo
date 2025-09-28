@@ -43,12 +43,7 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  // >>> NOVO: conversationId persistido (para manter contexto)
-  const [conversationId, setConversationId] = useState(() => {
-    const saved = localStorage.getItem("conversationId");
-    return saved && typeof saved === "string" ? saved : null;
-  });
+  const [conversationId, setConversationId] = useState(null);
 
   const messagesEndRef = useRef(null);
 
@@ -56,7 +51,8 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
     setMessages([
       {
         sender: "bot",
-        text: `Olá! Bem-vindo ao BEPIT Nexus ${regiao.nome}. Posso sugerir **restaurantes, passeios, praias e hospedagem** priorizando nossos parceiros. Diga o que procura 👇`
+        // NOVA mensagem (discreta, sem mencionar parceiros)
+        text: "Olá! Eu sou seu concierge local. Posso orientar sobre **roteiros, transporte, passeios, praias e onde comer**. O que você quer saber primeiro?"
       }
     ]);
   }, [regiao]);
@@ -76,24 +72,18 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
 
     try {
       const payload = { message: text };
-
-      // >>> NOVO: envia conversationId se já existir
       if (conversationId) payload.conversationId = conversationId;
 
       const response = await apiClient.post(`/api/chat/${regiao.slug}`, payload);
 
-      // >>> NOVO: atualiza e persiste conversationId retornado
-      const newConvId = response?.data?.conversationId || conversationId || null;
-      if (newConvId && newConvId !== conversationId) {
-        setConversationId(newConvId);
-        localStorage.setItem("conversationId", newConvId);
-      }
+      const newConvId = response.data.conversationId || conversationId || null;
+      if (newConvId && newConvId !== conversationId) setConversationId(newConvId);
 
       const botMessage = {
-        text: response?.data?.reply || "Não consegui entender. Pode tentar reformular?",
+        text: response.data.reply,
         sender: "bot",
-        interactionId: response?.data?.interactionId || null,
-        photoLinks: Array.isArray(response?.data?.photoLinks) ? response.data.photoLinks : []
+        interactionId: response.data.interactionId || null,
+        photoLinks: Array.isArray(response.data.photoLinks) ? response.data.photoLinks : []
       };
 
       setMessages((prev) => [...prev.slice(0, -1), botMessage]);
@@ -128,9 +118,8 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
   };
 
   const handleSendMessage = () => {
-    const value = (inputValue || "").trim();
-    if (value === "") return;
-    sendMessageToApi(value);
+    if (inputValue.trim() === "") return;
+    sendMessageToApi(inputValue);
     setInputValue("");
   };
 
@@ -247,6 +236,7 @@ function ChatScreen({ regiao, onVoltar, theme, setTheme }) {
 function RegionSelectionScreen({ onSelectRegion, theme, setTheme }) {
   const regioesDisponiveis = [
     { nome: "Região dos Lagos", slug: "regiao-dos-lagos" }
+    // Adicione mais regiões aqui quando quiser expandir
   ];
   return (
     <div className="h-screen flex flex-col items-center justify-center p-4 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
