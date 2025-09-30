@@ -69,7 +69,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", height: "100vh" }}>
+    <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", height: "100vh", overflow: "hidden" }}>
       {/* Header simples e seletor de região (placeholder) */}
       <header style={{ padding: 12, borderBottom: "1px solid #eee", display: "flex", gap: 12, alignItems: "center" }}>
         <div style={{ fontWeight: 700 }}>BEPIT Nexus</div>
